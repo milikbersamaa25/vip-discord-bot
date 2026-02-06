@@ -27,6 +27,18 @@ def get_session(message_id: int):
     return vip_sessions[message_id]
 
 
+async def auto_delete(ctx, msg, delay=5):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    try:
+        await msg.delete(delay=delay)
+    except:
+        pass
+
+
 def make_embed(message_id: int):
 
     session = get_session(message_id)
@@ -35,24 +47,21 @@ def make_embed(message_id: int):
 
     lines = []
 
-    title = "💎 VIP X8 LUCK BY MYST STORE 💎"
+    title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
 
-    # ===== INFO (tanpa judul INFO VIP) =====
     if info:
-        lines.append(f"📅 Tanggal : {info.get('waktu','-')}")
-        lines.append(f"⏱️ Durasi : {info.get('durasi_waktu','-')}")
-        lines.append(f"💰 Harga : {info.get('harga','-')}")
-        lines.append(f"👤 PS : {info.get('ps','-')}")
+        lines.append(f"──.✦ Tanggal : {info.get('waktu','-')}")
+        lines.append(f"──.✦ Durasi : {info.get('durasi_waktu','-')}")
+        lines.append(f"──.✦ Harga : {info.get('harga','-')}")
+        lines.append(f"──.✦ PS : {info.get('ps','-')}")
 
         if info.get("server"):
-            lines.append(f"🌐 Server : {info.get('server')}")
-
+            lines.append(f"──.✦ Server : {info.get('server')}")
     else:
         lines.append("_Belum diatur oleh admin_")
 
     lines.append("")
 
-    # ===== LIST SLOT (tanpa judul LIST SLOT) =====
     index = 1
     for data in vip_list:
         line = f"{index}. {data['roblox']} — {data['mention']}"
@@ -66,8 +75,8 @@ def make_embed(message_id: int):
         index += 1
 
     lines.append("")
-    lines.append("**Payment akan dibuka setelah semua list penuh ya guys!**")
-    lines.append("**Terimakasih! —Myst MOD :3**")
+    lines.append("*Payment akan dibuka setelah semua list penuh ya guys!*")
+    lines.append("*Terimakasih! —Myst MOD :3*")
 
     embed = discord.Embed(
         title=title,
@@ -117,7 +126,6 @@ class VipSetupModal(Modal):
         info["ps"] = self.ps.value
         info["server"] = self.server.value
 
-        # 🔴 FIX BUG: modal tidak punya interaction.message
         msg = await interaction.channel.fetch_message(self.message_id)
 
         await msg.edit(
@@ -304,17 +312,26 @@ class VipView(View):
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def editslot(ctx, message_id: int, nomor: int, member: discord.Member, roblox: str):
+async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
+
+    if not ctx.message.reference:
+        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
+        await auto_delete(ctx, m)
+        return
+
+    message_id = ctx.message.reference.message_id
 
     session = vip_sessions.get(message_id)
     if not session:
-        await ctx.send("List tidak ditemukan.")
+        m = await ctx.send("List tidak ditemukan.")
+        await auto_delete(ctx, m)
         return
 
     vip_list = session["list"]
 
     if nomor < 1 or nomor > MAX_SLOT:
-        await ctx.send("Nomor slot tidak valid.")
+        m = await ctx.send("Nomor slot tidak valid.")
+        await auto_delete(ctx, m)
         return
 
     index = nomor - 1
@@ -348,16 +365,25 @@ async def editslot(ctx, message_id: int, nomor: int, member: discord.Member, rob
         view=VipView(message_id)
     )
 
-    await ctx.send("Slot berhasil diubah.")
+    m = await ctx.send("Slot berhasil diubah.")
+    await auto_delete(ctx, m)
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def pay(ctx, message_id: int, nomor: int, status: str):
+async def pay(ctx, nomor: int, status: str):
+
+    if not ctx.message.reference:
+        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
+        await auto_delete(ctx, m)
+        return
+
+    message_id = ctx.message.reference.message_id
 
     session = vip_sessions.get(message_id)
     if not session:
-        await ctx.send("List tidak ditemukan.")
+        m = await ctx.send("List tidak ditemukan.")
+        await auto_delete(ctx, m)
         return
 
     vip_list = session["list"]
@@ -365,14 +391,16 @@ async def pay(ctx, message_id: int, nomor: int, status: str):
     index = nomor - 1
 
     if index < 0 or index >= len(vip_list):
-        await ctx.send("Slot tidak ditemukan.")
+        m = await ctx.send("Slot tidak ditemukan.")
+        await auto_delete(ctx, m)
         return
 
-    if status.lower() not in ("on", "off"):
-        await ctx.send("Status harus on atau off.")
+    if status.lower() not in ("paid", "unpaid"):
+        m = await ctx.send("Gunakan: paid / unpaid")
+        await auto_delete(ctx, m)
         return
 
-    vip_list[index]["paid"] = (status.lower() == "on")
+    vip_list[index]["paid"] = (status.lower() == "paid")
 
     msg = await ctx.channel.fetch_message(message_id)
 
@@ -381,7 +409,8 @@ async def pay(ctx, message_id: int, nomor: int, status: str):
         view=VipView(message_id)
     )
 
-    await ctx.send("Status payment diperbarui.")
+    m = await ctx.send("Status payment diperbarui.")
+    await auto_delete(ctx, m)
 
 
 # ================= MAIN COMMAND =================

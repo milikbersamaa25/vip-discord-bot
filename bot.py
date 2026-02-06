@@ -11,7 +11,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 MAX_SLOT = 20
 COLOR = 0x00f8ff
 
-# message_id -> { info: {}, list: [] }
 vip_sessions = {}
 
 
@@ -36,28 +35,24 @@ def make_embed(message_id: int):
 
     lines = []
 
-    title = "## 💎 VIP X8 LUCK BY MYST STORE 💎"
+    title = "💎 VIP X8 LUCK BY MYST STORE 💎"
 
-    lines.append("**━━━━━━━━━━ INFO VIP ━━━━━━━━━━**")
-
+    # ===== INFO (tanpa judul INFO VIP) =====
     if info:
-        lines.append(
-            f"──.☘︎݁˖ Tanggal : {info.get('waktu','-')} (Durasi: {info.get('durasi_waktu','-')})"
-        )
+        lines.append(f"📅 Tanggal : {info.get('waktu','-')}")
+        lines.append(f"⏱️ Durasi : {info.get('durasi_waktu','-')}")
         lines.append(f"💰 Harga : {info.get('harga','-')}")
-        lines.append(
-            f"──.☘︎݁˖ PS : {info.get('ps','-')} (Durasi: {info.get('durasi_ps','-')})"
-        )
+        lines.append(f"👤 PS : {info.get('ps','-')}")
+
         if info.get("server"):
-            lines.append(
-                f"──.☘︎݁˖ Server : {info.get('server')} (Durasi: {info.get('durasi_server','-')})"
-            )
+            lines.append(f"🌐 Server : {info.get('server')}")
+
     else:
         lines.append("_Belum diatur oleh admin_")
 
     lines.append("")
-    lines.append("**━━━━━━━━━━ LIST SLOT ━━━━━━━━━━**")
 
+    # ===== LIST SLOT (tanpa judul LIST SLOT) =====
     index = 1
     for data in vip_list:
         line = f"{index}. {data['roblox']} — {data['mention']}"
@@ -97,13 +92,14 @@ class VipSetupModal(Modal):
         self.durasi_waktu = TextInput(label="Durasi")
         self.harga = TextInput(label="Harga")
         self.ps = TextInput(label="PS / Host")
-        self.durasi_ps = TextInput(label="Durasi PS")
-        self.server = TextInput(label="Server", required=False)
-        self.durasi_server = TextInput(label="Durasi server", required=False)
+        self.server = TextInput(label="Server (opsional)", required=False)
 
         for i in (
-            self.waktu, self.durasi_waktu, self.harga,
-            self.ps, self.durasi_ps, self.server, self.durasi_server
+            self.waktu,
+            self.durasi_waktu,
+            self.harga,
+            self.ps,
+            self.server
         ):
             self.add_item(i)
 
@@ -119,16 +115,20 @@ class VipSetupModal(Modal):
         info["durasi_waktu"] = self.durasi_waktu.value
         info["harga"] = self.harga.value
         info["ps"] = self.ps.value
-        info["durasi_ps"] = self.durasi_ps.value
         info["server"] = self.server.value
-        info["durasi_server"] = self.durasi_server.value
 
-        await interaction.message.edit(
+        # 🔴 FIX BUG: modal tidak punya interaction.message
+        msg = await interaction.channel.fetch_message(self.message_id)
+
+        await msg.edit(
             embed=make_embed(self.message_id),
             view=VipView(self.message_id)
         )
 
-        await interaction.response.send_message("Info diperbarui.", ephemeral=True)
+        await interaction.response.send_message(
+            "Info diperbarui.",
+            ephemeral=True
+        )
 
 
 class JoinModal(Modal):
@@ -162,7 +162,9 @@ class JoinModal(Modal):
             "paid": False
         })
 
-        await interaction.message.edit(
+        msg = await interaction.channel.fetch_message(self.message_id)
+
+        await msg.edit(
             embed=make_embed(self.message_id),
             view=VipView(self.message_id)
         )
@@ -221,7 +223,9 @@ class DeleteSelect(Select):
 
                 vip_list.pop(i)
 
-                await interaction.message.edit(
+                msg = await interaction.channel.fetch_message(self.message_id)
+
+                await msg.edit(
                     embed=make_embed(self.message_id),
                     view=VipView(self.message_id)
                 )
@@ -286,7 +290,9 @@ class VipView(View):
     @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.secondary)
     async def refresh(self, interaction: discord.Interaction, button: Button):
 
-        await interaction.message.edit(
+        msg = await interaction.channel.fetch_message(self.message_id)
+
+        await msg.edit(
             embed=make_embed(self.message_id),
             view=VipView(self.message_id)
         )

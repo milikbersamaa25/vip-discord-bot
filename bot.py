@@ -50,13 +50,13 @@ def make_embed(message_id: int):
     title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
 
     if info:
-        lines.append(f"* Tanggal : {info.get('waktu','-')}")
-        lines.append(f"* Durasi : {info.get('durasi_waktu','-')}")
-        lines.append(f"* Harga : {info.get('harga','-')}")
+        lines.append(f"* TANGGAL : {info.get('waktu','-')}")
+        lines.append(f"* DURASI : {info.get('durasi_waktu','-')}")
+        lines.append(f"* HARGA : {info.get('harga','-')}")
         lines.append(f"* PS : {info.get('ps','-')}")
 
         if info.get("server"):
-            lines.append(f"* Server : {info.get('server')}")
+            lines.append(f"* SERVER : {info.get('server')}")
     else:
         lines.append("_Belum diatur oleh admin_")
 
@@ -442,3 +442,4 @@ async def on_ready():
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+

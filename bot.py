@@ -47,8 +47,6 @@ def make_embed(message_id: int):
 
     lines = []
 
-    lines.append("           ✦·┈๑⋅⋯  ⋯⋅๑┈·✦")
-
     title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
 
     # ====== INFO BOX ======
@@ -452,4 +450,5 @@ async def on_ready():
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 

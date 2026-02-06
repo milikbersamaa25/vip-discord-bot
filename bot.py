@@ -50,23 +50,24 @@ def make_embed(message_id: int):
     title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
 
     if info:
-        lines.append(f"──.✦ Tanggal : {info.get('waktu','-')}")
-        lines.append(f"──.✦ Durasi : {info.get('durasi_waktu','-')}")
-        lines.append(f"──.✦ Harga : {info.get('harga','-')}")
-        lines.append(f"──.✦ PS : {info.get('ps','-')}")
+        lines.append(f"* Tanggal : {info.get('waktu','-')}")
+        lines.append(f"* Durasi : {info.get('durasi_waktu','-')}")
+        lines.append(f"* Harga : {info.get('harga','-')}")
+        lines.append(f"* PS : {info.get('ps','-')}")
 
         if info.get("server"):
-            lines.append(f"──.✦ Server : {info.get('server')}")
+            lines.append(f"* Server : {info.get('server')}")
     else:
         lines.append("_Belum diatur oleh admin_")
 
     lines.append("")
+    lines.append("**──.✦ LIST SLOT**")
 
     index = 1
     for data in vip_list:
         line = f"{index}. {data['roblox']} — {data['mention']}"
         if data.get("paid"):
-            line += " | ✅ Paid"
+            line += " | ✅"
         lines.append(line)
         index += 1
 

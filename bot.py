@@ -51,14 +51,18 @@ def make_embed(message_id: int):
 
     title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
 
+    # ====== INFO BOX ======
     if info:
-        lines.append(f"* TANGGAL : {info.get('waktu','-')}")
-        lines.append(f"* DURASI  : {info.get('durasi_waktu','-')}")
-        lines.append(f"* HARGA   : {info.get('harga','-')}")
-        lines.append(f"* PS      : {info.get('ps','-')}")
+        box_lines = []
+        box_lines.append(f"TANGGAL  : {info.get('waktu','-')}")
+        box_lines.append(f"DURASI   : {info.get('durasi_waktu','-')}")
+        box_lines.append(f"HARGA    : {info.get('harga','-')}")
+        box_lines.append(f"PS       : {info.get('ps','-')}")
+        box_lines.append(f"SERVER   : {info.get('server','-')}")
 
-        if info.get("server"):
-            lines.append(f"* SERVER   : {info.get('server')}")
+        lines.append("```")
+        lines.extend(box_lines)
+        lines.append("```")
     else:
         lines.append("_Belum diatur oleh admin_")
 
@@ -318,7 +322,9 @@ class VipView(View):
 async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
 
     if not ctx.message.reference:
-        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
+        m = await ctx.send(
+            "❗Reply pesan list VIP terlebih dulu.\nContoh:\n!editslot 2 budi123 @Budi"
+        )
         await auto_delete(ctx, m)
         return
 
@@ -377,7 +383,9 @@ async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
 async def pay(ctx, nomor: int, status: str):
 
     if not ctx.message.reference:
-        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
+        m = await ctx.send(
+            "❗Reply pesan list VIP terlebih dulu.\nContoh:\n!pay 2 paid"
+        )
         await auto_delete(ctx, m)
         return
 
@@ -444,5 +452,3 @@ async def on_ready():
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
-
-

@@ -47,20 +47,18 @@ def make_embed(message_id: int):
 
     lines = []
 
+    lines.append("✦·┈๑⋅⋯  ⋯⋅๑┈·✦")
+
     title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
 
-    # ====== INFO BOX ======
     if info:
-        box_lines = []
-        box_lines.append(f"TANGGAL  : {info.get('waktu','-')}")
-        box_lines.append(f"DURASI   : {info.get('durasi_waktu','-')}")
-        box_lines.append(f"HARGA    : {info.get('harga','-')}")
-        box_lines.append(f"PS       : {info.get('ps','-')}")
-        box_lines.append(f"SERVER   : {info.get('server','-')}")
+        lines.append(f"* TANGGAL : {info.get('waktu','-')}")
+        lines.append(f"* DURASI  : {info.get('durasi_waktu','-')}")
+        lines.append(f"* HARGA   : {info.get('harga','-')}")
+        lines.append(f"* PS      : {info.get('ps','-')}")
 
-        lines.append("```")
-        lines.extend(box_lines)
-        lines.append("```")
+        if info.get("server"):
+            lines.append(f"* SERVER   : {info.get('server')}")
     else:
         lines.append("_Belum diatur oleh admin_")
 
@@ -188,7 +186,7 @@ class JoinModal(Modal):
         )
 
 
-# ================= DELETE =================
+# ================= DELETE (MEMBER) =================
 
 class DeleteSelect(Select):
 
@@ -230,6 +228,7 @@ class DeleteSelect(Select):
 
         for i, d in enumerate(vip_list):
             if d["id"] == slot_id:
+
                 if d["user_id"] != interaction.user.id:
                     await interaction.response.send_message("Bukan slot kamu.", ephemeral=True)
                     return
@@ -317,12 +316,62 @@ class VipView(View):
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
+async def delete(ctx, nomor: int = None):
+
+    if nomor is None:
+        m = await ctx.send("Format:\n!delete (no slot)\nContoh: !delete 3")
+        await auto_delete(ctx, m)
+        return
 
     if not ctx.message.reference:
+        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
+        await auto_delete(ctx, m)
+        return
+
+    message_id = ctx.message.reference.message_id
+
+    session = vip_sessions.get(message_id)
+    if not session:
+        m = await ctx.send("List tidak ditemukan.")
+        await auto_delete(ctx, m)
+        return
+
+    vip_list = session["list"]
+
+    index = nomor - 1
+
+    if index < 0 or index >= len(vip_list):
+        m = await ctx.send("Nomor slot tidak valid.")
+        await auto_delete(ctx, m)
+        return
+
+    vip_list.pop(index)
+
+    msg = await ctx.channel.fetch_message(message_id)
+
+    await msg.edit(
+        embed=make_embed(message_id),
+        view=VipView(message_id)
+    )
+
+    m = await ctx.send("Slot berhasil dihapus.")
+    await auto_delete(ctx, m)
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def edit(ctx, nomor: int = None, roblox: str = None, member: discord.Member = None):
+
+    if nomor is None or roblox is None or member is None:
         m = await ctx.send(
-            "❗Reply pesan list VIP terlebih dulu.\nContoh:\n!editslot 2 budi123 @Budi"
+            "Format:\n!edit (no slot) (username roblox) (@tag)\n"
+            "Contoh: !edit 2 KennMyst @User"
         )
+        await auto_delete(ctx, m)
+        return
+
+    if not ctx.message.reference:
+        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
         await auto_delete(ctx, m)
         return
 
@@ -343,7 +392,7 @@ async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
 
     index = nomor - 1
 
-    while len(vip_list) < index:
+    while len(vip_list) <= index:
         vip_list.append({
             "id": str(uuid.uuid4()),
             "user_id": 0,
@@ -352,18 +401,13 @@ async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
             "paid": False
         })
 
-    data = {
+    vip_list[index] = {
         "id": str(uuid.uuid4()),
         "user_id": member.id,
         "mention": member.mention,
         "roblox": roblox,
         "paid": False
     }
-
-    if index < len(vip_list):
-        vip_list[index] = data
-    else:
-        vip_list.append(data)
 
     msg = await ctx.channel.fetch_message(message_id)
 
@@ -372,18 +416,23 @@ async def editslot(ctx, nomor: int, roblox: str, member: discord.Member):
         view=VipView(message_id)
     )
 
-    m = await ctx.send("Slot berhasil diubah.")
+    m = await ctx.send("Slot berhasil diedit.")
     await auto_delete(ctx, m)
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def pay(ctx, nomor: int, status: str):
+async def paid(ctx, slots: str = None):
+
+    if slots is None:
+        m = await ctx.send(
+            "Format:\n!paid (no slot)\nBisa lebih dari satu.\nContoh: !paid 1,2,10"
+        )
+        await auto_delete(ctx, m)
+        return
 
     if not ctx.message.reference:
-        m = await ctx.send(
-            "❗Reply pesan list VIP terlebih dulu.\nContoh:\n!pay 2 paid"
-        )
+        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
         await auto_delete(ctx, m)
         return
 
@@ -397,19 +446,20 @@ async def pay(ctx, nomor: int, status: str):
 
     vip_list = session["list"]
 
-    index = nomor - 1
-
-    if index < 0 or index >= len(vip_list):
-        m = await ctx.send("Slot tidak ditemukan.")
+    try:
+        numbers = [int(x.strip()) for x in slots.split(",")]
+    except:
+        m = await ctx.send("Format salah. Contoh: !paid 1,2,10")
         await auto_delete(ctx, m)
         return
 
-    if status.lower() not in ("paid", "unpaid"):
-        m = await ctx.send("Gunakan: paid / unpaid")
-        await auto_delete(ctx, m)
-        return
+    updated = 0
 
-    vip_list[index]["paid"] = (status.lower() == "paid")
+    for nomor in numbers:
+        index = nomor - 1
+        if 0 <= index < len(vip_list):
+            vip_list[index]["paid"] = True
+            updated += 1
 
     msg = await ctx.channel.fetch_message(message_id)
 
@@ -418,7 +468,7 @@ async def pay(ctx, nomor: int, status: str):
         view=VipView(message_id)
     )
 
-    m = await ctx.send("Status payment diperbarui.")
+    m = await ctx.send(f"{updated} slot berhasil ditandai paid.")
     await auto_delete(ctx, m)
 
 
@@ -450,5 +500,3 @@ async def on_ready():
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
-
-

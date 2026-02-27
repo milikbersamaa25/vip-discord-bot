@@ -1,11 +1,13 @@
 import discord
 from discord.ext import commands
 from discord.ui import View, Button, Modal, TextInput, Select
+from discord import app_commands
 import os
 import uuid
 
 intents = discord.Intents.default()
 intents.message_content = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 MAX_SLOT = 20
@@ -27,18 +29,6 @@ def get_session(message_id: int):
     return vip_sessions[message_id]
 
 
-async def auto_delete(ctx, msg, delay=5):
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    try:
-        await msg.delete(delay=delay)
-    except:
-        pass
-
-
 def make_embed(message_id: int):
 
     session = get_session(message_id)
@@ -47,18 +37,20 @@ def make_embed(message_id: int):
 
     lines = []
 
-    lines.append("✦·┈๑⋅⋯  ⋯⋅๑┈·✦")
+    title = "💎 VIP X8 LUCK BY MYST STORE 💎"
 
-    title = "**💎 VIP X8 LUCK BY MYST STORE 💎**"
-
+    # ===== INFO BOX =====
     if info:
-        lines.append(f"* TANGGAL : {info.get('waktu','-')}")
-        lines.append(f"* DURASI  : {info.get('durasi_waktu','-')}")
-        lines.append(f"* HARGA   : {info.get('harga','-')}")
-        lines.append(f"* PS      : {info.get('ps','-')}")
+        lines.append("```")
+        lines.append(f"TANGGAL : {info.get('waktu','-')}")
+        lines.append(f"DURASI  : {info.get('durasi_waktu','-')}")
+        lines.append(f"HARGA   : {info.get('harga','-')}")
+        lines.append(f"PS      : {info.get('ps','-')}")
 
         if info.get("server"):
-            lines.append(f"* SERVER   : {info.get('server')}")
+            lines.append(f"SERVER  : {info.get('server')}")
+
+        lines.append("```")
     else:
         lines.append("_Belum diatur oleh admin_")
 
@@ -136,10 +128,7 @@ class VipSetupModal(Modal):
             view=VipView(self.message_id)
         )
 
-        await interaction.response.send_message(
-            "Info diperbarui.",
-            ephemeral=True
-        )
+        await interaction.response.send_message("Info diperbarui.", ephemeral=True)
 
 
 class JoinModal(Modal):
@@ -159,10 +148,7 @@ class JoinModal(Modal):
         session = get_session(self.message_id)
 
         if len(session["list"]) >= MAX_SLOT:
-            await interaction.response.send_message(
-                "Slot sudah penuh.",
-                ephemeral=True
-            )
+            await interaction.response.send_message("Slot sudah penuh.", ephemeral=True)
             return
 
         session["list"].append({
@@ -180,13 +166,10 @@ class JoinModal(Modal):
             view=VipView(self.message_id)
         )
 
-        await interaction.response.send_message(
-            "Berhasil masuk list VIP.",
-            ephemeral=True
-        )
+        await interaction.response.send_message("Berhasil masuk list VIP.", ephemeral=True)
 
 
-# ================= DELETE (MEMBER) =================
+# ================= DELETE MEMBER =================
 
 class DeleteSelect(Select):
 
@@ -269,9 +252,7 @@ class VipView(View):
             await interaction.response.send_message("Slot sudah penuh.", ephemeral=True)
             return
 
-        await interaction.response.send_modal(
-            JoinModal(self.message_id)
-        )
+        await interaction.response.send_modal(JoinModal(self.message_id))
 
     @discord.ui.button(label="- Hapus slot saya", style=discord.ButtonStyle.danger)
     async def delete(self, interaction: discord.Interaction, button: Button):
@@ -295,9 +276,7 @@ class VipView(View):
             await interaction.response.send_message("Hanya admin.", ephemeral=True)
             return
 
-        await interaction.response.send_modal(
-            VipSetupModal(self.message_id)
-        )
+        await interaction.response.send_modal(VipSetupModal(self.message_id))
 
     @discord.ui.button(label="🔄 Refresh", style=discord.ButtonStyle.secondary)
     async def refresh(self, interaction: discord.Interaction, button: Button):
@@ -312,82 +291,76 @@ class VipView(View):
         await interaction.response.send_message("Direfresh.", ephemeral=True)
 
 
-# ================= ADMIN COMMAND =================
+# ================= SLASH ADMIN COMMAND =================
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def delete(ctx, nomor: int = None):
+@bot.tree.command(name="delete", description="Admin: hapus slot VIP")
+@app_commands.describe(message_id="ID pesan VIP", nomor="Nomor slot")
+async def slash_delete(interaction: discord.Interaction, message_id: str, nomor: int):
 
-    if nomor is None:
-        m = await ctx.send("Format:\n!delete (no slot)\nContoh: !delete 3")
-        await auto_delete(ctx, m)
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("Hanya admin.", ephemeral=True)
         return
 
-    if not ctx.message.reference:
-        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
-        await auto_delete(ctx, m)
+    try:
+        mid = int(message_id)
+    except:
+        await interaction.response.send_message("Message ID tidak valid.", ephemeral=True)
         return
 
-    message_id = ctx.message.reference.message_id
-
-    session = vip_sessions.get(message_id)
+    session = vip_sessions.get(mid)
     if not session:
-        m = await ctx.send("List tidak ditemukan.")
-        await auto_delete(ctx, m)
+        await interaction.response.send_message("List tidak ditemukan.", ephemeral=True)
         return
 
     vip_list = session["list"]
-
     index = nomor - 1
 
     if index < 0 or index >= len(vip_list):
-        m = await ctx.send("Nomor slot tidak valid.")
-        await auto_delete(ctx, m)
+        await interaction.response.send_message("Nomor slot tidak valid.", ephemeral=True)
         return
 
     vip_list.pop(index)
 
-    msg = await ctx.channel.fetch_message(message_id)
+    msg = await interaction.channel.fetch_message(mid)
+    await msg.edit(embed=make_embed(mid), view=VipView(mid))
 
-    await msg.edit(
-        embed=make_embed(message_id),
-        view=VipView(message_id)
-    )
-
-    m = await ctx.send("Slot berhasil dihapus.")
-    await auto_delete(ctx, m)
+    await interaction.response.send_message("Slot berhasil dihapus.", ephemeral=True)
 
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def edit(ctx, nomor: int = None, roblox: str = None, member: discord.Member = None):
+@bot.tree.command(name="edit", description="Admin: edit slot VIP")
+@app_commands.describe(
+    message_id="ID pesan VIP",
+    nomor="Nomor slot",
+    roblox="Username Roblox",
+    member="User Discord"
+)
+async def slash_edit(
+    interaction: discord.Interaction,
+    message_id: str,
+    nomor: int,
+    roblox: str,
+    member: discord.Member
+):
 
-    if nomor is None or roblox is None or member is None:
-        m = await ctx.send(
-            "Format:\n!edit (no slot) (username roblox) (@tag)\n"
-            "Contoh: !edit 2 KennMyst @User"
-        )
-        await auto_delete(ctx, m)
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("Hanya admin.", ephemeral=True)
         return
 
-    if not ctx.message.reference:
-        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
-        await auto_delete(ctx, m)
+    try:
+        mid = int(message_id)
+    except:
+        await interaction.response.send_message("Message ID tidak valid.", ephemeral=True)
         return
 
-    message_id = ctx.message.reference.message_id
-
-    session = vip_sessions.get(message_id)
+    session = vip_sessions.get(mid)
     if not session:
-        m = await ctx.send("List tidak ditemukan.")
-        await auto_delete(ctx, m)
+        await interaction.response.send_message("List tidak ditemukan.", ephemeral=True)
         return
 
     vip_list = session["list"]
 
     if nomor < 1 or nomor > MAX_SLOT:
-        m = await ctx.send("Nomor slot tidak valid.")
-        await auto_delete(ctx, m)
+        await interaction.response.send_message("Nomor slot tidak valid.", ephemeral=True)
         return
 
     index = nomor - 1
@@ -409,70 +382,63 @@ async def edit(ctx, nomor: int = None, roblox: str = None, member: discord.Membe
         "paid": False
     }
 
-    msg = await ctx.channel.fetch_message(message_id)
+    msg = await interaction.channel.fetch_message(mid)
+    await msg.edit(embed=make_embed(mid), view=VipView(mid))
 
-    await msg.edit(
-        embed=make_embed(message_id),
-        view=VipView(message_id)
-    )
-
-    m = await ctx.send("Slot berhasil diedit.")
-    await auto_delete(ctx, m)
+    await interaction.response.send_message("Slot berhasil diedit.", ephemeral=True)
 
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def paid(ctx, slots: str = None):
+@bot.tree.command(name="paid", description="Admin: update payment slot VIP")
+@app_commands.describe(
+    message_id="ID pesan VIP",
+    slots="Contoh: 1,2,10"
+)
+async def slash_paid(
+    interaction: discord.Interaction,
+    message_id: str,
+    slots: str
+):
 
-    if slots is None:
-        m = await ctx.send(
-            "Format:\n!paid (no slot)\nBisa lebih dari satu.\nContoh: !paid 1,2,10"
-        )
-        await auto_delete(ctx, m)
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("Hanya admin.", ephemeral=True)
         return
 
-    if not ctx.message.reference:
-        m = await ctx.send("Reply pesan list VIP yang mau diubah.")
-        await auto_delete(ctx, m)
+    try:
+        mid = int(message_id)
+    except:
+        await interaction.response.send_message("Message ID tidak valid.", ephemeral=True)
         return
 
-    message_id = ctx.message.reference.message_id
-
-    session = vip_sessions.get(message_id)
+    session = vip_sessions.get(mid)
     if not session:
-        m = await ctx.send("List tidak ditemukan.")
-        await auto_delete(ctx, m)
+        await interaction.response.send_message("List tidak ditemukan.", ephemeral=True)
         return
-
-    vip_list = session["list"]
 
     try:
         numbers = [int(x.strip()) for x in slots.split(",")]
     except:
-        m = await ctx.send("Format salah. Contoh: !paid 1,2,10")
-        await auto_delete(ctx, m)
+        await interaction.response.send_message("Format salah. Contoh: 1,2,10", ephemeral=True)
         return
 
-    updated = 0
+    vip_list = session["list"]
 
-    for nomor in numbers:
-        index = nomor - 1
-        if 0 <= index < len(vip_list):
-            vip_list[index]["paid"] = True
+    updated = 0
+    for n in numbers:
+        idx = n - 1
+        if 0 <= idx < len(vip_list):
+            vip_list[idx]["paid"] = True
             updated += 1
 
-    msg = await ctx.channel.fetch_message(message_id)
+    msg = await interaction.channel.fetch_message(mid)
+    await msg.edit(embed=make_embed(mid), view=VipView(mid))
 
-    await msg.edit(
-        embed=make_embed(message_id),
-        view=VipView(message_id)
+    await interaction.response.send_message(
+        f"{updated} slot berhasil ditandai paid.",
+        ephemeral=True
     )
 
-    m = await ctx.send(f"{updated} slot berhasil ditandai paid.")
-    await auto_delete(ctx, m)
 
-
-# ================= MAIN COMMAND =================
+# ================= MAIN =================
 
 @bot.command()
 async def vip(ctx):
@@ -496,6 +462,7 @@ async def vip(ctx):
 
 @bot.event
 async def on_ready():
+    await bot.tree.sync()
     print("Bot siap.")
 
 
